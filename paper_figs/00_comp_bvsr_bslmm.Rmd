@@ -1,0 +1,76 @@
+---
+title: "00_comp_bvsr_bslmm"
+author: "Heather Wheeler"
+date: '`r Sys.time()`'
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(data.table)
+library(ggplot2)
+"%&%" = function(a,b) paste(a,b,sep="")
+date <- Sys.Date()
+my.dir <- "/home/wheelerlab3/mesa_analyses/"
+```
+
+```{r}
+#read in BSLMM
+for(pop in c('AFA','CAU','HIS')){
+  filelist <- scan(my.dir %&% "BSLMM_exp/" %&% pop %&% "filelist", "c")
+  for(file in filelist){
+    a <- fread(my.dir %&% "BSLMM_exp/" %&% file) %>%
+      dplyr::mutate(pop=pop)
+    if(exists('bslmm')){
+      bslmm <- rbind(bslmm, a)
+    }else{
+      bslmm <- a
+    }
+  }
+}
+
+#read in BVSR
+for(pop in c('AFA','CAU','HIS')){
+  filelist <- scan(my.dir %&% "BVSR_exp/" %&% pop %&% "filelist", "c")
+  for(file in filelist){
+    a <- fread(my.dir %&% "BVSR_exp/" %&% file) %>%
+      dplyr::mutate(pop=pop)
+    if(exists('bvsr')){
+      bvsr <- rbind(bvsr, a)
+    }else{
+      bvsr <- a
+    }
+  }
+}
+```
+
+```{r, fig.width=10,fig.height=3.5}
+#join by ensg
+all <- left_join(bslmm,bvsr,by=c('gene','pop'))
+
+summary(lm(hh50~pve50,all))
+summary(lm(hh50~pve50,all))$coefficients
+cor.test(all$hh50,all$pve50)
+cor.test(all$hh50,all$pve50,method='s')
+#make plot like this for elastic net alpha comparison? LASSO vs. EN (colored by alpha=0.5 or 0.05)
+ggplot(all,aes(x=pve50,y=hh50)) + geom_point() + facet_wrap(~pop) + geom_abline(slope=1,intercept = 0,color='blue') + theme_bw(14) +
+  xlab('BSLMM PVE') + ylab('BVSR PVE')
+ggplot(all,aes(x=pve50,y=hh50,color=pge50)) + geom_point() + facet_wrap(~pop) + geom_abline(slope=1,intercept = 0)
+ggplot(all,aes(x=pve50,y=hh50,color=snp50)) + geom_point() + facet_wrap(~pop) + geom_abline(slope=1,intercept = 0) 
+ggplot(all,aes(x=pve50,y=hh50,color=n_gamma50)) + geom_point() + facet_wrap(~pop) + geom_abline(slope=1,intercept = 0)
+
+cor.test(all$snp50,all$n_gamma50)
+cor.test(all$snp50,all$n_gamma50,method='s')
+ggplot(all,aes(x=n_gamma50, y=snp50)) + geom_density_2d() + facet_wrap(~pop)
+ggplot(all,aes(x=n_gamma50, y=snp50, color=hh50)) + geom_point() + facet_wrap(~pop)
+
+data <- all %>% mutate(position=1:length(pve50),`medianSNPs<=10`=n_gamma50<=10,LCS=factor(pge025>0.01,labels=c('<= 0.01','> 0.01')))
+ggplot(data,aes(x=pve50,y=pge50,ymin=pge025,ymax=pge975,col=LCS)) + geom_pointrange(col='gray') + geom_point() + theme_bw(12) + xlab("PVE") + ylab("PGE") + theme(legend.position = c(1,0),legend.justification = c(1,0)) + facet_wrap(~pop)
+
+ngenes <- dim(all)[1]/3
+sorted <- dplyr::arrange(all,pop,pve50) %>% mutate(order=rep(c(1:ngenes),3))
+ggplot(sorted,aes(x=order,y=pve50,ymin=pve025,ymax=pve975)) + geom_pointrange(col='gray') + geom_point() + facet_wrap(~pop)
+
+sorted <- dplyr::arrange(all,pop,hh50) %>% mutate(order=rep(c(1:ngenes),3))
+ggplot(sorted,aes(x=order,y=hh50,ymin=hh025,ymax=hh975)) + geom_pointrange(col='gray') + geom_point() + facet_wrap(~pop)
+```

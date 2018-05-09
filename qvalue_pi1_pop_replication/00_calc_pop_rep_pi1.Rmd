@@ -1,0 +1,126 @@
+---
+title: "00_calc_pop_rep_pi1"
+output: html_document
+---
+
+#### Similar to Extended Data Fig 7 in 2017 GTEx paper, calc pi_1 (true positive rate):
+<https://www.nature.com/nature/journal/v550/n7675/fig_tab/nature24277_SF7.html>
+- qvalue package: <https://github.com/StoreyLab/qvalue/tree/devel>
+
+```{r,message=FALSE}
+library(qvalue)
+library(data.table)
+library(dplyr)
+library(ggplot2)
+"%&%" = function(a,b) paste(a,b,sep="")
+
+#test qvalue package
+data(hedenfalk)
+pvalues <- hedenfalk$p
+qobj <- qvalue(p = pvalues)
+hist(qobj)
+print(qobj$pi0)
+```
+
+```{r,fig.width=6,fig.height=5,message=FALSE}
+#read in Matrix eQTL results
+
+for(i in 1:22){
+  AFAres<-fread("zcat /home/lauren/MatrixEQTL_results/AFA_Nk_20_PFs_chr" %&% i %&% ".meqtl.cis.2017-07-05.txt.gz",header=T)
+  CAUres<-fread("zcat /home/lauren/MatrixEQTL_results/CAU_Nk_20_PFs_chr" %&% i %&% ".meqtl.cis.2017-07-05.txt.gz",header=T)
+  HISres<-fread("zcat /home/lauren/MatrixEQTL_results/HIS_Nk_20_PFs_chr" %&% i %&% ".meqtl.cis.2017-07-05.txt.gz",header=T)
+  if(exists("AFAall")){
+    AFAall <- rbind(AFAall,AFAres)
+    CAUall <- rbind(CAUall,CAUres)
+    HISall <- rbind(HISall,HISres)
+  }else{
+    AFAall <- AFAres
+    CAUall <- CAUres
+    HISall <- HISres
+  }
+}
+
+#use each population as the discovery cohort, pull top hits (FDR < 0.05) and calc pi_1 in each pop as the replication cohort
+
+
+poplist <- c('AFA','CAU','HIS')
+npops <- length(poplist)
+pi1_matrix <- matrix(NA,nrow=npops,ncol=npops)
+rownames(pi1_matrix) <- poplist
+colnames(pi1_matrix) <- poplist
+
+for(i in 1:length(poplist)){
+  for(j in 1:length(poplist)){
+    if(poplist[i] == poplist[j]){
+      pi1 <- 1
+    }else{
+      pop1 <- get(poplist[i] %&% "all")
+      pop2 <- get(poplist[j] %&% "all")
+      pop1fdr05 <- dplyr::filter(pop1, FDR < 0.05)
+      pop2tested <- inner_join(pop1fdr05,pop2,by=c("snps","gene"))
+      pop2pvals <- pop2tested$pvalue.y
+      qobjpop2 <- qvalue(p = pop2pvals)
+      print("Disc: " %&% poplist[i] %&% " Rep: " %&% poplist[j])
+      print(hist(qobjpop2))
+      pi1 <- 1 - qobjpop2$pi0
+    }
+    pi1_matrix[i,j] <- pi1
+  }
+}
+
+print(pi1_matrix)
+
+pi1_melt <- melt(pi1_matrix)
+pi1_melt$Var1 = with(pi1_melt, factor(Var1, levels = rev(levels(Var1))))
+ggplot(pi1_melt, aes(x=Var2,y=Var1,fill=value)) + geom_raster() + xlab("Replication Population") + 
+  ylab("Discovery Population") + theme_bw(25) + scale_fill_gradient(name=expression(pi[1])) 
+```
+
+### add in combo pops
+```{r}
+#read in Matrix eQTL results
+
+for(i in 1:22){
+  AFHIres<-fread("zcat /home/lauren/MatrixEQTL_results/AFHI_Nk_20_PFs_chr" %&% i %&% ".meqtl.cis.2017-08-09.txt.gz",header=T)
+  ALLres<-fread("zcat /home/lauren/MatrixEQTL_results/ALL_Nk_20_PFs_chr" %&% i %&% ".meqtl.cis.2017-08-08.txt.gz",header=T)
+  if(exists("AFHIall")){
+    AFHIall <- rbind(AFHIall,AFHIres)
+    ALLall <- rbind(ALLall,ALLres)
+  }else{
+    AFHIall <- AFHIres
+    ALLall <- ALLres
+  }
+}
+
+poplist <- c('AFA','CAU','HIS','AFHI','ALL')
+npops <- length(poplist)
+pi1_matrix <- matrix(NA,nrow=npops,ncol=npops)
+rownames(pi1_matrix) <- poplist
+colnames(pi1_matrix) <- poplist
+
+for(i in 1:length(poplist)){
+  for(j in 1:length(poplist)){
+    if(poplist[i] == poplist[j]){
+      pi1 <- 1
+    }else{
+      pop1 <- get(poplist[i] %&% "all")
+      pop2 <- get(poplist[j] %&% "all")
+      pop1fdr05 <- dplyr::filter(pop1, FDR < 0.05)
+      pop2tested <- inner_join(pop1fdr05,pop2,by=c("snps","gene"))
+      pop2pvals <- pop2tested$pvalue.y
+      qobjpop2 <- qvalue(p = pop2pvals)
+      print("Disc: " %&% poplist[i] %&% " Rep: " %&% poplist[j])
+      print(hist(qobjpop2))
+      pi1 <- 1 - qobjpop2$pi0
+    }
+    pi1_matrix[i,j] <- pi1
+  }
+}
+
+print(pi1_matrix)
+
+pi1_melt <- melt(pi1_matrix)
+pi1_melt$Var1 = with(pi1_melt, factor(Var1, levels = rev(levels(Var1))))
+ggplot(pi1_melt, aes(x=Var2,y=Var1,fill=value)) + geom_raster() + xlab("Replication Population") + 
+  ylab("Discovery Population") + theme_bw(25) + scale_fill_gradient(name=expression(pi[1])) 
+```
