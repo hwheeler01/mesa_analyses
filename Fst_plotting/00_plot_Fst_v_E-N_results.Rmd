@@ -10,6 +10,7 @@ library(dplyr)
 library(ggplot2)
 library(gridExtra)
 library(data.table)
+library(viridis)
 
 "%&%" = function(a,b) paste(a,b,sep="")
 my.dir = "/home/lauren/files_for_revisions_plosgen/fst_results/"
@@ -149,7 +150,7 @@ ggplot(all_nof, aes(x=diffR2,y=pop1,col=pop2)) + facet_wrap(~pop,nrow=3) + geom_
 
 suball_nof <- dplyr::filter(all_nof, pop=='AFA-CAU' | pop=='AFA-HIS' | pop=='CAU-HIS')
 b <- ggplot(suball_nof, aes(x=diffR2,y=pop1,col=pop2)) + facet_wrap(~pop,nrow=1) + geom_point() +  labs(x=expression(paste(R^2, " difference (pop1 - pop2)")),y=expression(paste("pop1 ", R^2)),col=expression(paste("pop2 ", R^2)),title='B') + theme_bw(14) + 
-  scale_color_gradientn(colours = c('blue','pink')) + 
+  scale_color_viridis() + 
   theme(legend.justification=c(0,1), legend.position=c(0.005,0.995),legend.title = element_text(size=10),legend.text = element_text(size=10),legend.key.size = unit(0.3, "cm"),plot.margin=unit(c(0,0.2,0,0.2), "cm")) + 
   coord_cartesian(xlim=c(-0.85,0.85)) + geom_density_2d(col='gray') + scale_size(range=c(5,20))
 print(b)
