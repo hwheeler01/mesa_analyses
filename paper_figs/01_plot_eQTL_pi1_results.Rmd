@@ -1,5 +1,5 @@
 ---
-title: "01_plot_eQTL_pi1_results"
+title: "01_plot_pi1_results"
 author: "Heather Wheeler"
 date: "`r Sys.time()`"
 output: html_document
@@ -31,6 +31,7 @@ for(nk in c(0,10,20,30)){
 
 colnames(res) <- c("disc_pop","FHS","MXL","YRI","GEU", "nk")
 res_g <- tidyr::gather(res,rep_pop,pi1,-disc_pop,-nk)
+res_g <- mutate(res_g, disc_pop=factor(disc_pop,levels=c('ALL','AFHI','HIS','CAU','AFA')))
 
 ggplot(res_g, aes(x=rep_pop,y=disc_pop,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
   ylab("Discovery Population") + theme_bw(14) +  facet_wrap(~nk) +
@@ -39,13 +40,71 @@ ggplot(res_g, aes(x=rep_pop,y=disc_pop,fill=pi1)) + geom_raster() + xlab("Replic
 ```
 
 ```{r}
-ggplot(res_g, aes(x=nk,y=pi1,col=rep_pop)) + geom_point() + geom_line() + facet_wrap(~disc_pop) +
-  scale_color_viridis(discrete = TRUE) + theme_bw(14) + labs(x="Number Peer Factors",y=expression(pi[1]),col="replication\npopulation") +
+res_gr <- mutate(res_g, disc_pop=factor(disc_pop,levels=c('AFA','CAU','HIS','AFHI','ALL')))
+ggplot(res_gr, aes(x=nk,y=pi1,col=rep_pop)) + geom_point() + geom_line() + facet_wrap(~disc_pop) +
+  scale_color_viridis(discrete = TRUE) + theme_bw(14) + labs(x="Number Peer Factors",y=expression(pi[1]),col="Replication\nPopulation") +
   theme(legend.justification=c(0,1), legend.position=c(0.77,0.42),plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"))
 ```
 
+```{r,fig.width=10,fig.height=3}
+ggplot(res_gr, aes(x=nk,y=pi1,col=rep_pop)) + geom_point() + geom_line() + facet_wrap(~disc_pop,nrow=1) +
+  scale_color_viridis(discrete = TRUE) + theme_bw(14) + labs(x="Number Peer Factors",y=expression(pi[1]),col="Replication\nPopulation") 
+```
+
 ```{r,fig.width=8,fig.height=3}
-res_g3 <- dplyr::filter(res_g, disc_pop != 'AFHI' & disc_pop != 'ALL')
+res_g3 <- dplyr::filter(res_gr, disc_pop != 'AFHI' & disc_pop != 'ALL')
 ggplot(res_g3, aes(x=nk,y=pi1,col=rep_pop)) + geom_point() + geom_line() + facet_wrap(~disc_pop) +
   scale_color_viridis(discrete = TRUE) + theme_bw(14) + labs(x="Number Peer Factors",y=expression(pi[1]),col="replication\npopulation")
+```
+
+## Elastic net predicted expression pi1 results
+- ask Lauren what threshold was used in discovery set?
+- try a range of R2?
+```{r}
+en <- read.table('/home/lauren/files_for_revisions_plosgen/pi1_RvR2_all.txt') %>% mutate(V2=ifelse(V2=='MEX','MXL',as.character(V2)))
+colnames(en) <- c('disc','rep','pi1')
+en <- mutate(en,disc=factor(disc,levels=c('ALL','AFHI','HIS','CAU','AFA')))
+ggplot(en, aes(x=rep,y=disc,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
+  ylab("Discovery Population") + theme_bw(14) +   scale_fill_viridis(name=expression(pi[1]))
+
+```
+
+
+### plot eQTL counts
+```{r,fig.height=3,fig.width=10}
+for(pop in c('afa','cau','his')){
+  a <- read.table(my.dir %&% pop %&% '_summary_pcs_nk.txt',header=T) %>% dplyr::mutate(nk=nk)
+  if(exists('eqtl')){
+    eqtl <- rbind(eqtl, a)
+  }else{
+    eqtl <- a
+  }
+}
+
+eqtl <- mutate(eqtl,pc=factor(pc,labels=c('0 PCs','3 PCs','5 PCs','10 PCs')))
+ggplot(eqtl, aes(x=Nk,y=FDR_0.05,col=pop)) + geom_point() + geom_line() + facet_wrap(~pc,nrow=1) +
+  scale_y_continuous(labels = function(x) format(x, scientific = TRUE)) +
+  scale_color_viridis(discrete = TRUE) + theme_bw(14) + labs(x="Number Peer Factors",y="Number of eQTLs (FDR < 0.05)")
+
+rm(eqtl)
+```
+
+### all eQTL pi1
+```{r,fig.width=10,fig.height=7}
+allpi1 <- read.table('/home/wheelerlab3/mesa_analyses/qvalue_pi1_pop_replication/eqtl_pi1_2018-05-16.txt',header=T)
+allpi1_g <- tidyr::gather(allpi1,rep_pop,pi1,-disc_pop)
+
+ggplot(allpi1_g, aes(x=rep_pop,y=disc_pop,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
+  ylab("Discovery Population") + theme_bw(14)  +
+  scale_fill_viridis(name=expression(pi[1])) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+```{r,fig.width=7,fig.height=6}
+##FHS, GEU, MXL, YRI only
+subpi1 <- dplyr::select(allpi1,disc_pop,FHS0,FHS10,FHS20,FHS30,GEU0,GEU10,GEU20,GEU30,MXL0,MXL10,MXL20,MXL30,YRI0,YRI10,YRI20,YRI30)
+subpi1_g <- tidyr::gather(subpi1,rep_pop,pi1,-disc_pop)
+
+ggplot(subpi1_g, aes(x=rep_pop,y=disc_pop,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
+  ylab("Discovery Population") + theme_bw(14)  +
+  scale_fill_viridis(name=expression(pi[1])) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
