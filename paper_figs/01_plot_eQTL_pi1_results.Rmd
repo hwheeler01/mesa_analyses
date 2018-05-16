@@ -1,0 +1,51 @@
+---
+title: "01_plot_eQTL_pi1_results"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(data.table)
+library(viridis)
+library(tidyr)
+
+"%&%" = function(a,b) paste(a,b,sep="")
+my.dir = "/home/lauren/files_for_revisions_plosgen/meqtl_results/"
+#my.dir = "~/mount/lauren/files_for_revisions_plosgen/meqtl_results/"
+```
+
+```{r,fig.width=6,fig.height=5}
+#read in pi1
+for(nk in c(0,10,20,30)){
+  a <- read.table(my.dir %&% "pi1_nk" %&% nk %&% "_pc3.txt",header=T) %>% dplyr::mutate(nk=nk)
+  if(exists('res')){
+    res <- rbind(res, a)
+  }else{
+    res <- a
+  }
+}
+
+colnames(res) <- c("disc_pop","FHS","MXL","YRI","GEU", "nk")
+res_g <- tidyr::gather(res,rep_pop,pi1,-disc_pop,-nk)
+
+ggplot(res_g, aes(x=rep_pop,y=disc_pop,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
+  ylab("Discovery Population") + theme_bw(14) +  facet_wrap(~nk) +
+  scale_fill_viridis(name=expression(pi[1]))
+
+```
+
+```{r}
+ggplot(res_g, aes(x=nk,y=pi1,col=rep_pop)) + geom_point() + geom_line() + facet_wrap(~disc_pop) +
+  scale_color_viridis(discrete = TRUE) + theme_bw(14) + labs(x="Number Peer Factors",y=expression(pi[1]),col="replication\npopulation") +
+  theme(legend.justification=c(0,1), legend.position=c(0.77,0.42),plot.margin=unit(c(0.2,0.2,0.2,0.2), "cm"))
+```
+
+```{r,fig.width=8,fig.height=3}
+res_g3 <- dplyr::filter(res_g, disc_pop != 'AFHI' & disc_pop != 'ALL')
+ggplot(res_g3, aes(x=nk,y=pi1,col=rep_pop)) + geom_point() + geom_line() + facet_wrap(~disc_pop) +
+  scale_color_viridis(discrete = TRUE) + theme_bw(14) + labs(x="Number Peer Factors",y=expression(pi[1]),col="replication\npopulation")
+```
