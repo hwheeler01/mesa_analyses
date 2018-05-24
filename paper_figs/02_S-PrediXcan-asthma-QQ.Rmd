@@ -1,0 +1,47 @@
+---
+title: "02_S-PrediXcan-asthma-QQ"
+author: "Heather Wheeler"
+date: "`r Sys.time()`"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(data.table)
+library(viridis)
+library(tidyr)
+
+"%&%" = function(a,b) paste(a,b,sep="")
+my.dir = "/home/lauren/files_for_revisions_plosgen/metaxcan_asthma/"
+```
+
+```{r,fig.width=3.5,fig.height=3}
+res <- fread(my.dir %&% "combined_pvals_zscore.txt")
+#calc expect p dist
+nn <- dim(res)[[1]]
+xx =  -log10((1:nn)/(nn+1))
+
+afa <- dplyr::arrange(res,afa_pval) %>% mutate(obs=-log10(afa_pval),exp=xx,pop='AFA') %>% select(obs,exp,pop)
+cau <- dplyr::arrange(res,cau_pval) %>% mutate(obs=-log10(cau_pval),exp=xx,pop='CAU') %>% select(obs,exp,pop)
+his <- dplyr::arrange(res,his_pval) %>% mutate(obs=-log10(his_pval),exp=xx,pop='HIS') %>% select(obs,exp,pop)
+afhi <- dplyr::arrange(res,afhi_pval) %>% mutate(obs=-log10(afhi_pval),exp=xx,pop='AFHI') %>% select(obs,exp,pop)
+all <- dplyr::arrange(res,all_pval) %>% mutate(obs=-log10(all_pval),exp=xx,pop='ALL') %>% select(obs,exp,pop)
+
+resg <- rbind(afa,cau,his,all)
+resg <- mutate(resg,pop=factor(pop, levels=c("ALL","AFA","CAU","HIS")))
+
+ggplot(resg,aes(x=exp,y=obs,col=pop)) + geom_point(size=0.6) + scale_color_viridis(discrete = TRUE) +
+  theme_bw(14) + geom_abline(intercept = 0, slope = 1) + labs(x=expression(paste('Expected ',-log[10],' ',P)),
+      y=expression(paste('Observed ',-log[10],' ',P)),col="Population")+
+  theme(legend.justification=c(0,1), legend.position=c(0.005,0.995))
+
+#set obs > 10 to 12
+resg_cut <- mutate(resg,obs=ifelse(obs>10,12,obs))
+ggplot(resg_cut,aes(x=exp,y=obs,col=pop)) + geom_point(size=0.6) + scale_color_viridis(discrete = TRUE) +
+  theme_bw(14) + geom_abline(intercept = 0, slope = 1) + labs(x=expression(paste('Expected ',-log[10],' ',P)),
+                          y=expression(paste('Observed ',-log[10],' ',P)),col="Population")+
+                          theme(legend.justification=c(0,1), legend.position=c(0.005,0.995))
+```
+

@@ -61,11 +61,10 @@ ggplot(res_g3, aes(x=nk,y=pi1,col=rep_pop)) + geom_line() + geom_point() + facet
 - ask Lauren what threshold was used in discovery set?
 - try a range of R2?
 ```{r}
-en <- read.table('/home/lauren/files_for_revisions_plosgen/pi1_RvR2_all.txt') %>% mutate(V2=ifelse(V2=='MEX','MXL',as.character(V2)))
+en <- read.table('/home/lauren/files_for_revisions_plosgen/pi1_RvR2_all.txt',header=T) %>% mutate(rep=ifelse(rep=='MEX','MXL',rep))
 colnames(en) <- c('disc','rep','pi1')
 en <- mutate(en,disc=factor(disc,levels=c('ALL','AFHI','HIS','CAU','AFA')))
-ggplot(en, aes(x=rep,y=disc,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
-  ylab("Discovery Population") + theme_bw(14) +   scale_fill_viridis(name=expression(pi[1]))
+ggplot(en, aes(x=rep,y=disc,fill=pi1)) + geom_raster() + labs(x="Replication Population",y="Discovery Population",fill=expression(pi[1])) + theme_bw(14) +   scale_fill_viridis()
 
 ```
 
@@ -85,8 +84,18 @@ ggplot(eqtl, aes(x=Nk,y=FDR_0.05,col=pop)) + geom_line() + geom_point() + facet_
 ```{r,fig.width=10,fig.height=7}
 allpi1 <- read.table('/home/wheelerlab3/mesa_analyses/qvalue_pi1_pop_replication/eqtl_pi1_2018-05-16.txt',header=T)
 allpi1_g <- tidyr::gather(allpi1,rep_pop,pi1,-disc_pop)
-
 ggplot(allpi1_g, aes(x=rep_pop,y=disc_pop,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
+  ylab("Discovery Population") + theme_bw(14)  +
+  scale_fill_viridis(name=expression(pi[1])) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+
+suballpi1_g <- dplyr::filter(allpi1_g,rep_pop!='GEUYRI0' & rep_pop!='GEUYRI10' & rep_pop!='GEUYRI20' & rep_pop!='GEUYRI30' & rep_pop!='GEUEUR0' & rep_pop!='GEUEUR10' & rep_pop!='GEUEUR20' & rep_pop!='GEUEUR30' & disc_pop!='ALL0' & disc_pop!='ALL10' & disc_pop!='ALL20' & disc_pop!='ALL30' & disc_pop!='AFHI0' & disc_pop!='AFHI10' & disc_pop!='AFHI20' & disc_pop!='AFHI30')
+                             
+fix_allpi1_g <- mutate(suballpi1_g,disc_pop=factor(disc_pop,levels=c('AFA0','AFA10','AFA20','AFA30','CAU0','CAU10','CAU20','CAU30','HIS0','HIS10','HIS20','HIS30','AFHI0','AFHI10','AFHI20','AFHI30','ALL0','ALL10','ALL20','ALL30')),rep_pop=factor(rep_pop,levels=c('AFA0','AFA10','AFA20','AFA30','CAU0','CAU10','CAU20','CAU30','HIS0','HIS10','HIS20','HIS30','FHS0','FHS10','FHS20','FHS30','GEU0','GEU10','GEU20','GEU30','MXL0','MXL10','MXL20','MXL30','YRI0','YRI10','YRI20','YRI30')))
+```
+
+```{r,fig.width=8,fig.height=4}
+ggplot(fix_allpi1_g, aes(x=rep_pop,y=disc_pop,fill=pi1)) + geom_raster() + xlab("Replication Population") + 
   ylab("Discovery Population") + theme_bw(14)  +
   scale_fill_viridis(name=expression(pi[1])) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
